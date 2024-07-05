@@ -48,7 +48,8 @@ while (typeof (locationData) != "string") {
                 throw `No stop information for ${postCode}`
             }
             const sortedBusInfo = busInfo.sort((bus1, bus2) => bus1.timeToStation - bus2.timeToStation);
-            nearestStops.push(busStops.stopPoints[i].commonName)
+            // nearestStops.push(busStops.stopPoints[i].naptanId)
+            nearestStops.push({"naptanId": busStops.stopPoints[i].naptanId, "commonName":busStops.stopPoints[i].commonName})
             console.log(`Next bus at stop ${busStops.stopPoints[i].commonName} is ${sortedBusInfo[0].lineId} arriving in ${Math.round(sortedBusInfo[0].timeToStation / 60)} mins\n`);
         }
 ;
@@ -58,14 +59,22 @@ while (typeof (locationData) != "string") {
             throw `Do not understand this response ${directions}. Enter Y or N`;
         else if (directions == "y"){
             for (let j = 0; j < nearestStops.length; j++) {
-                const directionsResp = await fetch(`https://api.tfl.gov.uk/Journey/JourneyResults/${postCode}/to/${nearestStops[j]}`)
+                const directionsResp = await fetch(`https://api.tfl.gov.uk/Journey/JourneyResults/${postCode}/to/${nearestStops[j].naptanId}`)
             if (directionsResp.status != 200) {
-                logger.error(`Unable to direct from ${postCode} to ${nearestStops[j]}`)
-                throw `Unable to direct from ${postCode} to ${nearestStops[j]}`
+                logger.error(`Unable to direct from ${postCode} to ${nearestStops[j].commonName}`)
+                throw `Unable to direct from ${postCode} to ${nearestStops[j].commonName}`
             }
-            console.log(`Directions from ${postCode} to ${nearestStops[j]} are `)
+            const route = await directionsResp.json();
+            // console.log(route.journeys[0].duration);
+            // console.log(route.journeys[0].legs[0].instruction.steps[0].description);
+            // loop through steps, display direction and summary to user
+            let instructions = ""
+            for (let k = 0; k < route.journeys[0].legs[0].instruction.steps.length; k++) {
+                instructions += `${route.journeys[0].legs[0].instruction.steps[k].descriptionHeading.trim()} `
+                instructions += `on ${route.journeys[0].legs[0].instruction.steps[k].description}. `
             }
-
+            console.log(`Directions from ${postCode.toUpperCase()} to ${nearestStops[j].commonName} are:\n\t${instructions}\n`)
+            }
         }
         break
     } catch (err) {
